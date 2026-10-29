@@ -1,6 +1,13 @@
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ledger - personal finance by Asritha Nagubandi</title>
+<meta name="theme-color" content="#eef2e9">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Ledger">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%235f803f'/%3E%3Ctext x='90' y='124' font-size='104' font-family='Georgia,serif' font-weight='700' fill='%23fbfdf7' text-anchor='middle'%3EL%3C/text%3E%3C/svg%3E">
+<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22Ledger%22%2C%22short_name%22%3A%22Ledger%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23eef2e9%22%2C%22theme_color%22%3A%22%23eef2e9%22%2C%22start_url%22%3A%22.%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2527http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2527%2520viewBox%253D%25270%25200%2520180%2520180%2527%253E%253Crect%2520width%253D%2527180%2527%2520height%253D%2527180%2527%2520rx%253D%252740%2527%2520fill%253D%2527%25235f803f%2527%252F%253E%253Ctext%2520x%253D%252790%2527%2520y%253D%2527124%2527%2520font-size%253D%2527104%2527%2520font-family%253D%2527Georgia%252Cserif%2527%2520font-weight%253D%2527700%2527%2520fill%253D%2527%2523fbfdf7%2527%2520text-anchor%253D%2527middle%2527%253EL%253C%252Ftext%253E%253C%252Fsvg%253E%22%2C%22sizes%22%3A%22any%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -96,6 +103,18 @@
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
   .seg button{padding:8px 12px;font-size:13px;font-weight:600;color:var(--muted)} .seg button.on{background:var(--ink);color:var(--paper)}
   .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  @media(max-width:620px){
+    .btn{padding:10px 15px;min-height:42px}
+    .btn.sm{padding:7px 11px;min-height:36px}
+    input,select,textarea{min-height:42px;font-size:16px}
+    .filters input[type=search]{flex:1 1 100%;min-width:0}
+    .filters select,.filters .btn{flex:1 1 auto}
+    .stat .val{font-size:22px}
+    .item{padding-left:14px}
+    .tab{scroll-snap-align:start}
+    nav.tabs .wrap{overflow-x:auto;scrollbar-width:none}
+    nav.tabs .wrap::-webkit-scrollbar{display:none}
+  }
   .filters input,.filters select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--field)}
   .loading{text-align:center;padding:70px;color:var(--muted);font-family:var(--font-display,'Fraunces',serif);font-size:20px}
   /* grouped view */
@@ -140,6 +159,7 @@
   <button data-tab="overview" class="on">Overview</button>
   <button data-tab="accounts">Accounts</button>
   <button data-tab="transactions">Transactions</button>
+  <button data-tab="trends">Trends</button>
   <button data-tab="budget">Budget</button>
   <button data-tab="debt">Debt</button>
   <button data-tab="goals">Goals</button>
@@ -157,10 +177,20 @@
         <button class="btn sm" id="ovPrev" title="Previous month">‹</button>
         <input type="month" id="ovMonth" style="padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--field)">
         <button class="btn sm" id="ovNext" title="Next month">›</button>
-        <button class="btn sm" id="ovAll">All time</button>
+        <select id="ovRange" title="Date range">
+          <option value="month">By month</option>
+          <option value="last-3">Last 3 months</option>
+          <option value="last-6">Last 6 months</option>
+          <option value="this-year">This year</option>
+          <option value="all">All time</option>
+          <option value="custom">Custom…</option>
+        </select>
+        <label class="note" id="ovFromWrap" style="display:none;align-items:center;gap:4px">From <input type="date" id="ovFrom"></label>
+        <label class="note" id="ovToWrap" style="display:none;align-items:center;gap:4px">To <input type="date" id="ovTo"></label>
         <button class="btn sm primary" id="viewTrendsBtn">View trends →</button>
       </div>
     </div>
+    <div id="nwHero"></div>
     <div class="grid stat-grid" id="statCards"></div>
     <div class="row-between" style="margin:26px 0 12px">
       <h3 class="section-title" style="margin:0">Recurring monthly</h3>
@@ -173,15 +203,42 @@
 
   <!-- TRENDS -->
   <section class="view" id="v-trends">
-    <button class="btn sm" id="trendsBack" style="margin-bottom:12px">‹ Back to overview</button>
     <div class="row-between" style="margin-bottom:12px">
       <div><div class="eyebrow">Patterns over time</div><h2 class="section-title" style="margin:0">Trends</h2></div>
-      <div class="seg" id="pieScope"><button data-scope="month" class="on">This month</button><button data-scope="all">All time</button></div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <select id="trRange" title="Date range">
+          <option value="this-month">This month</option>
+          <option value="last-month">Last month</option>
+          <option value="last-3">Last 3 months</option>
+          <option value="last-6">Last 6 months</option>
+          <option value="this-year">This year</option>
+          <option value="all">All time</option>
+          <option value="custom">Custom…</option>
+        </select>
+        <label class="note" id="trFromWrap" style="display:none;align-items:center;gap:4px">From <input type="date" id="trFrom"></label>
+        <label class="note" id="trToWrap" style="display:none;align-items:center;gap:4px">To <input type="date" id="trTo"></label>
+      </div>
     </div>
-    <h3 class="section-title" style="margin-top:6px">Where your money goes</h3>
+    <h3 class="section-title" style="margin-top:6px">Where your money goes <span class="note" id="pieRangeLbl" style="font-weight:400"></span></h3>
+    <p class="note" style="margin:-6px 0 8px">Tip: click a category to see every transaction behind it, right here.</p>
     <div class="card pad" id="pieChart"></div>
     <h3 class="section-title">Month-to-month</h3>
+    <p class="note" style="margin:-6px 0 8px">Click any month to focus the breakdown above on it.</p>
     <div class="card pad" id="trendChart"></div>
+    <div class="row-between" style="margin:26px 0 8px">
+      <h3 class="section-title" style="margin:0">Categories over time</h3>
+      <div class="seg" id="catView"><button data-cv="changed" class="on">What changed</button><button data-cv="bars">Monthly bars</button></div>
+    </div>
+    <div id="catTrends"></div>
+    <div class="row-between" style="margin:26px 0 8px">
+      <h3 class="section-title" style="margin:0">Daily spending</h3>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button class="btn sm" id="calPrev" title="Previous month">‹</button>
+        <span class="mono" id="calLabel" style="min-width:120px;text-align:center;font-weight:600"></span>
+        <button class="btn sm" id="calNext" title="Next month">›</button>
+      </div>
+    </div>
+    <div class="card pad" id="calendar"></div>
   </section>
 
   <!-- ACCOUNTS -->
@@ -209,9 +266,20 @@
         <input type="search" id="txSearch" placeholder="Search description…" style="min-width:170px">
         <select id="txAcctFilter"><option value="">All accounts</option></select>
         <select id="txCatFilter"><option value="">All categories</option></select>
-        <label class="note" style="display:flex;align-items:center;gap:6px">Month
-          <input type="month" id="txMonthFilter"></label>
-        <button class="btn sm" id="txMonthClear">All months</button>
+        <select id="txRange" title="Date range">
+          <option value="all">All time</option>
+          <option value="this-month">This month</option>
+          <option value="last-month">Last month</option>
+          <option value="last-3">Last 3 months</option>
+          <option value="last-6">Last 6 months</option>
+          <option value="this-year">This year</option>
+          <option value="custom">Custom…</option>
+        </select>
+        <label class="note" id="txFromWrap" style="display:none;align-items:center;gap:4px">From <input type="date" id="txFrom"></label>
+        <label class="note" id="txToWrap" style="display:none;align-items:center;gap:4px">To <input type="date" id="txTo"></label>
+        <label class="note" style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="txNoTransfers"> Hide transfers</label>
+        <button class="btn sm" id="txNeedsReview" title="Show Uncategorized">⚑ Needs review</button>
+        <button class="btn sm" id="txExport" title="Download what's shown as CSV">⭳ Export</button>
         <button class="btn sm" id="expandAll" style="margin-left:auto">Expand all</button>
         <div class="seg" id="viewSeg"><button data-vm="grouped" class="on">Grouped</button><button data-vm="flat">Flat list</button></div>
       </div>
@@ -353,7 +421,7 @@
       <ul style="margin:0 0 0 18px;font-size:14px;line-height:1.85">
         <li><strong>Add one:</strong> + Add transaction. Tick <strong>"Save &amp; add another"</strong> to keep the form open and rattle off several in a row.</li>
         <li><strong>Duplicate warning:</strong> if a new entry matches one you already have (same date, amount, description), you'll get a heads-up before saving.</li>
-        <li><strong>Two views:</strong> <em>Grouped</em> collapses repeat merchants with a ×N count and subtotals; <em>Flat list</em> is a plain table. Filter by <strong>account</strong>, month, category, or search text - and the filters combine.</li>
+        <li><strong>Two views:</strong> <em>Grouped</em> collapses repeat merchants with a ×N count and subtotals; <em>Flat list</em> is a plain table. Filter by <strong>account</strong>, category, search text, or a <strong>date range</strong> (presets like last 3 months / this year, or a custom From-To) - and the filters all combine.</li>
         <li><strong>See one account's activity:</strong> pick it in the <em>All accounts</em> filter, or hit <strong>Transactions</strong> on any card in the Accounts tab to jump straight there. That account's current balance appears in the totals bar. Transfers show under <em>both</em> accounts they touch.</li>
         <li><strong>Expand all / Collapse all:</strong> in Grouped view, one button opens or closes every category and repeat-merchant group at once. It works on whatever your filters are currently showing.</li>
         <li><strong>Edit fast:</strong> change a category straight from the dropdown in the list, or hit Edit for the full form.</li>
@@ -392,10 +460,16 @@
     <h3 style="font-size:17px;margin:26px 0 10px">📊 Overview &amp; trends</h3>
     <div class="card pad">
       <ul style="margin:0 0 0 18px;font-size:14px;line-height:1.85">
-        <li><strong>Overview</strong> - net worth, money in, money out, the month's net, and goal progress at a glance. Switch between a single month and all time.</li>
+        <li><strong>Overview</strong> - net worth, money in, money out, and goal progress at a glance. Use the date picker to view a single month (with ‹ › to step), or pick a range: last 3/6 months, this year, all time, or a <strong>custom From-To</strong>.</li>
         <li><strong>Recurring monthly</strong> - Ledger spots your regular bills automatically (rent, internet, subscriptions) by finding charges that repeat across months at a similar amount, and totals what they cost you each month. Each one shows <strong>when the next charge is expected</strong>, and if a price has changed you'll see a badge like <em>↑ was $9.99</em> - handy for catching a subscription that quietly went up. Anything it gets wrong, hit ✕ to remove it from the list.</li>
-        <li><strong>View trends →</strong> - a donut chart of spending by category (hover a slice for its share) plus month-to-month in/out bars, so you can see whether things are drifting.</li>
-        <li>Transfers are deliberately excluded from all of these, so moving your own money never looks like spending.</li>
+        <li><strong>Trends tab</strong> - a donut of spending by category plus month-to-month in/out bars. Pick any date range (or custom From-To) to re-scope it. <strong>Click a category</strong> - on the donut or anywhere it appears - and a panel slides in (from the side on a tablet/desktop, up from the bottom on a phone) listing every transaction behind it, without leaving the page. <strong>Click a month bar</strong> to focus the donut on that month.</li>
+        <li><strong>Net-worth trend:</strong> the Overview leads with your net worth as a big number and a line showing how it's moved over the last several months.</li>
+        <li><strong>Categories over time:</strong> a <em>What changed</em> list ranks categories and shows each one's change versus the previous period (↑/↓ with % and amount), or switch to <em>Monthly bars</em> for a stacked view of where each month's money went.</li>
+        <li><strong>Daily spending calendar:</strong> a real month grid - each day shows what you spent, shaded darker for heavier days, with a weekly total down the side. Step months with ‹ ›, and click any day to see that day's transactions.</li>
+        <li><strong>Export:</strong> the <em>⭳ Export</em> button on Transactions downloads whatever is currently filtered as a CSV (great for taxes or a spreadsheet).</li>
+        <li><strong>Power search:</strong> type <code>&gt;100</code> or <code>&lt;20</code> in the search box to filter by amount, tick <em>Hide transfers</em>, or hit <em>⚑ Needs review</em> to see everything still Uncategorized.</li>
+        <li><strong>Keyboard:</strong> press <strong>N</strong> for a new transaction, <strong>/</strong> to jump to search, <strong>Esc</strong> to close a dialog.</li>
+        <li>Transfers are deliberately excluded from spending views, so moving your own money never looks like spending.</li>
       </ul>
     </div>
 
@@ -550,6 +624,48 @@
 </style>
 
 <div class="modal-bg" id="modalBg"><div class="modal pad" id="modalBody"></div></div>
+<div id="drillScrim"></div>
+<aside id="drillPanel" aria-hidden="true">
+  <div class="drill-head">
+    <div style="flex:1;min-width:0"><div id="drillTitle" style="font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px"></div><div class="note" id="drillSub"></div></div>
+    <button class="btn sm ghost" id="drillClose" aria-label="Close" style="font-size:18px">✕</button>
+  </div>
+  <div id="drillBody"></div>
+  <div class="drill-foot"><button class="btn sm" id="drillOpenFull">Open in Transactions →</button></div>
+</aside>
+<div id="calTip"></div>
+<style>
+  #drillScrim{position:fixed;inset:0;background:rgba(0,0,0,.28);opacity:0;pointer-events:none;transition:opacity .2s;z-index:110}
+  #drillScrim.on{opacity:1;pointer-events:auto}
+  #drillPanel{position:fixed;top:0;right:0;height:100%;width:390px;max-width:92vw;background:var(--card);border-left:1px solid var(--line);box-shadow:-12px 0 40px rgba(0,0,0,.18);z-index:111;transform:translateX(100%);transition:transform .24s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
+  #drillPanel.on{transform:none}
+  .drill-head{display:flex;align-items:flex-start;gap:10px;padding:16px 16px 12px;border-bottom:1px solid var(--line)}
+  #drillBody{flex:1;overflow:auto;padding:6px 10px}
+  .drill-foot{padding:12px 16px;border-top:1px solid var(--line)}
+  .drill-row{display:flex;align-items:center;gap:10px;padding:9px 8px;border-bottom:1px solid var(--line);font-size:13.5px}
+  .drill-row:last-child{border-bottom:none}
+  @media(max-width:767px){
+    #drillPanel{top:auto;bottom:0;right:0;left:0;width:100%;max-width:100%;height:auto;max-height:82vh;border-left:none;border-top:1px solid var(--line);border-radius:16px 16px 0 0;transform:translateY(100%);box-shadow:0 -12px 40px rgba(0,0,0,.22)}
+    #drillPanel.on{transform:none}
+  }
+  /* calendar */
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr) 56px;gap:5px}
+  .cal-dow{font-size:11px;color:var(--muted);text-align:center;text-transform:uppercase;letter-spacing:.04em;padding-bottom:2px}
+  .cal-cell{aspect-ratio:1;border:1px solid var(--line);border-radius:8px;padding:5px 6px;display:flex;flex-direction:column;justify-content:space-between;min-height:48px;position:relative;overflow:hidden}
+  .cal-cell.has:hover{border-color:var(--gold);cursor:pointer}
+  .cal-cell .d{font-size:11px;color:var(--muted);font-weight:600}
+  .cal-cell .amt{font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1.1}
+  .cal-cell.today{outline:2px solid var(--gold);outline-offset:-2px}
+  .cal-cell.blank{border:none;background:transparent}
+  .cal-wtot{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;font-size:11px;color:var(--muted);padding-right:2px}
+  .cal-wtot .wv{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--ink);font-size:12px}
+  #calTip{position:fixed;z-index:120;max-width:280px;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 32px rgba(0,0,0,.22);padding:9px 11px;font-size:12.5px;opacity:0;pointer-events:none;transition:opacity .12s;display:none}
+  #calTip.on{opacity:1;display:block}
+  #calTip .tt-h{font-weight:700;margin-bottom:5px;display:flex;justify-content:space-between;gap:10px}
+  #calTip .tt-r{display:flex;justify-content:space-between;gap:10px;padding:2px 0;line-height:1.3}
+  #calTip .tt-r span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #calTip .tt-more{color:var(--muted);margin-top:3px}
+</style>
 <div class="bulkbar" id="bulkBar">
   <span id="bulkCount" style="font-weight:600">0 selected</span>
   <span class="note">Set category</span>
@@ -730,6 +846,32 @@ function accountBalance(id){
 const totalAssets = () => state.accounts.filter(a=>accTypeKind(a.type)==='asset').reduce((s,a)=>s+accountBalance(a.id),0);
 const totalLiabilities = () => state.accounts.filter(a=>accTypeKind(a.type)==='liability').reduce((s,a)=>s-accountBalance(a.id),0);
 const netWorth = () => state.accounts.reduce((s,a)=>s+accountBalance(a.id),0);
+function netWorthAsOf(iso){
+  let b=state.accounts.reduce((s,a)=>s+(a.opening||0),0);
+  state.transactions.forEach(t=>{
+    if(!t.date||t.date>iso) return;
+    if(t.type==='income'&&acct(t.account)) b+=t.amount;
+    else if(t.type==='expense'&&acct(t.account)) b-=t.amount;
+    // transfers net to zero across accounts, no effect on total net worth
+  });
+  return b;
+}
+function netWorthSeries(maxMonths=12){
+  const dated=state.transactions.filter(t=>t.date).map(t=>t.date).sort();
+  const today=new Date();
+  const out=[];
+  let startY=today.getFullYear(), startM=today.getMonth()-(maxMonths-1);
+  if(dated.length){ const f=dated[0]; const fy=+f.slice(0,4), fm=+f.slice(5,7)-1; if(fy*12+fm>startY*12+startM){ startY=fy; startM=fm; } }
+  let y=startY, m=startM;
+  const endKey=today.getFullYear()*12+today.getMonth();
+  while(y*12+m<=endKey){
+    const last=new Date(y,m+1,0);
+    const iso=(y*12+m===endKey)? `${today.getFullYear()}-${p2(today.getMonth()+1)}-${p2(today.getDate())}` : `${last.getFullYear()}-${p2(last.getMonth()+1)}-${p2(last.getDate())}`;
+    out.push({m:`${last.getFullYear()}-${p2(last.getMonth()+1)}`, nw:netWorthAsOf(iso)});
+    m++; if(m>11){m=0;y++;}
+  }
+  return out.slice(-maxMonths);
+}
 function recomputeGoals(){ state.goals.forEach(g=>{ const linked=state.transactions.filter(t=>t.goalId===g.id).reduce((s,t)=>s+t.amount,0); g.saved=(g.seed||0)+linked; }); }
 
 /* category helpers */
@@ -801,11 +943,16 @@ function ruleMatches(desc,keyword){ const d=(desc||'').toLowerCase(); const toks
 function categorize(desc){ for(const r of state.rules){ if(r.keyword&&ruleMatches(desc,r.keyword)) return r.category; } return 'Uncategorized'; }
 
 /* OVERVIEW */
-let ovAll=false;
 function ovMonthVal(){ return document.getElementById('ovMonth').value || nowMonth(); }
-function txInPeriod(){ if(ovAll) return state.transactions; const m=ovMonthVal(); return state.transactions.filter(t=>monthKey(t.date)===m); }
-function shiftOvMonth(delta){ const el=document.getElementById('ovMonth'); const v=el.value||nowMonth(); const [y,mo]=v.split('-').map(Number); const d=new Date(y,mo-1+delta,1); el.value=`${d.getFullYear()}-${p2(d.getMonth()+1)}`; ovAll=false; updateOvAll(); renderOverview(); }
-function updateOvAll(){ document.getElementById('ovAll').classList.toggle('primary',ovAll); document.getElementById('ovMonth').style.opacity=ovAll?'.5':'1'; }
+function ovIsMonth(){ return document.getElementById('ovRange').value==='month'; }
+function txInPeriod(){
+  if(ovIsMonth()){ const m=ovMonthVal(); return state.transactions.filter(t=>monthKey(t.date)===m); }
+  const f=document.getElementById('ovFrom').value, t=document.getElementById('ovTo').value;
+  return (f||t)?state.transactions.filter(x=>inRange(x.date,f,t)):state.transactions;
+}
+function ovPeriodLabel(){ return ovIsMonth()?prettyMonth(ovMonthVal()):rangeLabel(document.getElementById('ovFrom').value,document.getElementById('ovTo').value); }
+function shiftOvMonth(delta){ const el=document.getElementById('ovMonth'); const v=el.value||nowMonth(); const [y,mo]=v.split('-').map(Number); const d=new Date(y,mo-1+delta,1); el.value=`${d.getFullYear()}-${p2(d.getMonth()+1)}`; document.getElementById('ovRange').value='month'; updateOvAll(); renderOverview(); }
+function updateOvAll(){ const monthMode=ovIsMonth(); ['ovPrev','ovNext','ovMonth'].forEach(id=>document.getElementById(id).style.display=monthMode?'':'none'); const custom=document.getElementById('ovRange').value==='custom'; document.getElementById('ovFromWrap').style.display=custom?'flex':'none'; document.getElementById('ovToWrap').style.display=custom?'flex':'none'; }
 /* ---- recurring expense detection ---- */
 function recurKey(desc){
   return (desc||'').toLowerCase()
@@ -975,16 +1122,55 @@ function renderRecurring(){
     </div>`).join(''):`<div class="pad note">All detected items are hidden.</div>`}</div>
     ${hid.length?`<div class="note" style="margin-top:10px">${hid.length} hidden · <button class="btn ghost sm" id="recurReset" style="padding:2px 6px">show all again</button></div>`:''}`;
 }
+function sparkPath(vals,W,H,pad){ // returns {line, area, pts}
+  const min=Math.min(...vals), max=Math.max(...vals), span=(max-min)||1;
+  const n=vals.length, innerW=W-pad*2, innerH=H-pad*2;
+  const x=i=> n<=1?W/2 : pad+i*(innerW/(n-1));
+  const y=v=> pad+innerH-((v-min)/span)*innerH;
+  const pts=vals.map((v,i)=>[x(i),y(v)]);
+  const line=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  const area=line+` L ${x(n-1).toFixed(1)} ${(H-pad).toFixed(1)} L ${x(0).toFixed(1)} ${(H-pad).toFixed(1)} Z`;
+  return {line,area,pts,min,max,y};
+}
+function renderNwHero(nw){
+  const el=document.getElementById('nwHero'); if(!el) return;
+  const series=netWorthSeries(12);
+  const vals=series.map(s=>s.nw);
+  const tone=nw>=0?'var(--pos)':'var(--neg)';
+  let chart='';
+  if(series.length>=2){
+    const W=640,H=120,pad=16; const sp=sparkPath(vals,W,H,pad);
+    const dots=sp.pts.map((p,i)=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="7" fill="transparent"><title>${MONTHS[+series[i].m.slice(5,7)-1]} ${series[i].m.slice(0,4)} · ${money(series[i].nw)}</title></circle>`).join('');
+    const last=sp.pts[sp.pts.length-1];
+    const first=series[0], chg=nw-first.nw;
+    chart=`<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="none" style="height:120px;display:block">
+        <defs><linearGradient id="nwg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${tone}" stop-opacity=".18"/><stop offset="1" stop-color="${tone}" stop-opacity="0"/></linearGradient></defs>
+        <path d="${sp.area}" fill="url(#nwg)"/>
+        <path d="${sp.line}" fill="none" stroke="${tone}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+        <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="4" fill="${tone}"/>
+        ${dots}
+      </svg>
+      <div class="note" style="margin-top:4px">${series.length}-month trend · <span style="color:${chg>=0?'var(--pos)':'var(--neg)'};font-weight:600">${chg>=0?'+':'−'}${money(Math.abs(chg))}</span> since ${MONTHS[+first.m.slice(5,7)-1]} ${first.m.slice(0,4)}</div>`;
+  } else {
+    chart=`<div class="note">Your net-worth trend line will appear here once you have activity across two or more months.</div>`;
+  }
+  el.innerHTML=`<div class="card pad" style="margin-bottom:14px">
+    <div class="lbl" style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Net worth</div>
+    <div class="mono" style="font-size:40px;font-weight:800;letter-spacing:-.02em;color:${tone};line-height:1.1;margin:2px 0 10px">${money(nw)}</div>
+    ${chart}
+  </div>`;
+}
 function renderOverview(){
   const tx=txInPeriod();
   const sumIn=tx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const sumOut=tx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
   const nw=netWorth();
   const goalSaved=state.goals.reduce((s,g)=>s+(g.saved||0),0);
+  const per=ovPeriodLabel();
+  renderNwHero(nw);
   const cards=[
-    ['Net worth',money(nw),nw>=0?'in':'out'],
-    ['Money in',money(sumIn),'in'],
-    ['Money out',money(sumOut),'out'],
+    [`Money in · ${per}`,money(sumIn),'in'],
+    [`Money out · ${per}`,money(sumOut),'out'],
     ['Saved toward goals',money(goalSaved),'']
   ];
   document.getElementById('statCards').innerHTML=cards.map(([l,v,c])=>statCard(l,v,c)).join('');
@@ -992,27 +1178,216 @@ function renderOverview(){
   gm.innerHTML=state.goals.length?`<div class="card pad">`+state.goals.map(g=>{const p=g.target?Math.min(100,g.saved/g.target*100):0;return `<div class="bar-row"><div style="font-size:13px;font-weight:600">${escapeHtml(g.name)}</div><div class="bar-track"><div class="bar-fill" style="width:${p.toFixed(1)}%;background:var(--gold)"></div></div><div class="mono" style="font-size:13px">${money(g.saved)} / ${money(g.target)}</div></div>`;}).join('')+`</div>`:`<div class="card pad empty"><h3>No goals yet</h3><p class="note">Set money aside for something that matters.</p><div style="margin-top:12px"><button class="btn gold sm" onclick="openGoalModal()">+ New goal</button></div></div>`;
 }
 const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-let pieScope='month';
-function renderTrends(){ renderPie(); renderTrend(); }
+function trRangeVal(){ return {from:document.getElementById('trFrom').value, to:document.getElementById('trTo').value}; }
+let catView='changed';
+let calMonth=null; // 'YYYY-MM'
+function renderTrends(){ renderPie(); renderTrend(); renderCatTrends(); renderCalendar(); }
+function monthsBack(n){ const out=[]; const d=new Date(); for(let i=n-1;i>=0;i--){ const x=new Date(d.getFullYear(),d.getMonth()-i,1); out.push(`${x.getFullYear()}-${p2(x.getMonth()+1)}`); } return out; }
+
+/* ---- drill-down side panel (reused for category and day) ---- */
+let drillFull=null;
+function spendRows(list){
+  if(!list.length) return `<div class="note" style="padding:16px;text-align:center">No transactions here.</div>`;
+  return list.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(t=>{
+    const isTr=t.type==='transfer'; const inc=t.type==='income';
+    const ctx=isTr?transferCtx(t):acctName(t.account);
+    return `<div class="drill-row">
+      <span class="mono note" style="width:62px;flex:none">${(t.date||'').slice(5)}</span>
+      <div style="flex:1;min-width:0"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(t.description||'(no description)')}</div><div class="note" style="font-size:11px">${escapeHtml(ctx)}</div></div>
+      <span class="mono amt ${isTr?'':(inc?'in':'out')}" style="font-weight:700;white-space:nowrap">${isTr?'↔ ':(inc?'+':'−')}${money(t.amount)}</span>
+    </div>`;}).join('');
+}
+function openDrill(title,dotColor,subtitle,list,fullFn){
+  document.getElementById('drillTitle').innerHTML=(dotColor?`<span class="dot" style="background:${dotColor};width:12px;height:12px"></span>`:'')+escapeHtml(title);
+  const tot=list.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  document.getElementById('drillSub').textContent=`${subtitle} · ${money(tot)} · ${list.length} item${list.length===1?'':'s'}`;
+  document.getElementById('drillBody').innerHTML=spendRows(list);
+  document.getElementById('drillBody').scrollTop=0;
+  drillFull=fullFn||null;
+  document.getElementById('drillOpenFull').style.display=fullFn?'':'none';
+  document.getElementById('drillPanel').classList.add('on');
+  document.getElementById('drillPanel').setAttribute('aria-hidden','false');
+  document.getElementById('drillScrim').classList.add('on');
+}
+function closeDrill(){ document.getElementById('drillPanel').classList.remove('on'); document.getElementById('drillPanel').setAttribute('aria-hidden','true'); document.getElementById('drillScrim').classList.remove('on'); }
+document.getElementById('drillClose').addEventListener('click',closeDrill);
+document.getElementById('drillScrim').addEventListener('click',closeDrill);
+document.getElementById('drillOpenFull').addEventListener('click',()=>{ const f=drillFull; closeDrill(); if(f) f(); });
+function openCategoryDrill(cat,from,to){
+  const list=state.transactions.filter(t=>t.type==='expense'&&t.category===cat&&inRange(t.date,from,to));
+  openDrill(cat,catColor(cat),rangeLabel(from,to),list,()=>viewCategoryTx(cat,from,to));
+}
+function openDayDrill(iso){
+  const list=state.transactions.filter(t=>t.date===iso);
+  openDrill(prettyFullDate(iso),'',rangeLabel(iso,iso),list,()=>viewCategoryTx('',iso,iso));
+}
+function prettyFullDate(iso){ try{ return new Date(iso+'T00:00:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric'}); }catch(e){ return iso; } }
+
+/* ---- Categories over time: "what changed" + monthly stacked bars ---- */
+function catSpend(from,to){ const o={}; state.transactions.forEach(t=>{ if(t.type!=='expense'||!t.date) return; if(!inRange(t.date,from,to)) return; const c=t.category||'Uncategorized'; o[c]=(o[c]||0)+t.amount; }); return o; }
+function prevWindow(from,to){
+  if(!from&&!to) return {from:'',to:''};
+  const f=new Date((from||to)+'T00:00:00'), t=new Date((to||from)+'T00:00:00');
+  const days=Math.round((t-f)/86400000)+1;
+  const pe=new Date(f); pe.setDate(pe.getDate()-1);
+  const ps=new Date(pe); ps.setDate(ps.getDate()-days+1);
+  const iso=d=>`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
+  return {from:iso(ps),to:iso(pe)};
+}
+function renderCatTrends(){
+  const cont=document.getElementById('catTrends'); if(!cont) return;
+  document.querySelectorAll('#catView button').forEach(b=>b.classList.toggle('on',b.dataset.cv===catView));
+  if(catView==='bars') return renderCatBars(cont);
+  const {from,to}=trRangeVal();
+  const cur=catSpend(from,to);
+  const prev=prevWindow(from,to); const pv=(prev.from||prev.to)?catSpend(prev.from,prev.to):{};
+  const names=[...new Set([...Object.keys(cur),...Object.keys(pv)])];
+  if(!names.length){ cont.innerHTML=`<div class="card pad empty"><h3>Nothing to compare yet</h3><p class="note">Spend across a couple of periods and the biggest changes show up here.</p></div>`; return; }
+  const rows=names.map(c=>({c,cur:cur[c]||0,prev:pv[c]||0,delta:(cur[c]||0)-(pv[c]||0)})).sort((a,b)=>b.cur-a.cur);
+  const max=Math.max(1,...rows.map(r=>r.cur));
+  const hasPrev=Object.keys(pv).length>0;
+  cont.innerHTML=`<div class="card pad">
+    ${hasPrev?`<p class="note" style="margin:0 0 10px">Each bar is this period's spend; the chip compares it with the previous ${rangeLabel(prev.from,prev.to)}.</p>`:`<p class="note" style="margin:0 0 10px">Spend this period. Pick a shorter range to see period-over-period changes.</p>`}
+    ${rows.map(r=>{
+      const pct = r.prev>0 ? Math.round(r.delta/r.prev*100) : null;
+      const chip = !hasPrev ? '' : (r.prev===0 ? `<span class="chip price-up">new</span>` :
+        Math.abs(r.delta)<0.005 ? `<span class="chip">no change</span>` :
+        `<span class="chip ${r.delta>0?'price-up':'price-down'}">${r.delta>0?'↑':'↓'} ${money(Math.abs(r.delta))}${pct!==null?` (${r.delta>0?'+':'−'}${Math.abs(pct)}%)`:''}</span>`);
+      return `<div class="catrow" data-cat="${encodeURIComponent(r.c)}" style="display:flex;align-items:center;gap:10px;padding:7px 4px;cursor:pointer;border-radius:7px">
+        <span class="dot" style="background:${catColor(r.c)};width:11px;height:11px;flex:none"></span>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;font-size:13.5px"><span style="flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(r.c)}</span><span class="mono" style="font-weight:700">${money(r.cur)}</span>${chip}</div>
+          <div class="bar-track" style="margin-top:4px"><div class="bar-fill" style="width:${(r.cur/max*100).toFixed(1)}%;background:${catColor(r.c)}"></div></div>
+        </div>
+        <span class="note" style="flex:none">›</span>
+      </div>`;}).join('')}
+  </div>`;
+  cont.querySelectorAll('.catrow').forEach(el=>el.addEventListener('click',()=>openCategoryDrill(decodeURIComponent(el.dataset.cat),from,to)));
+}
+function renderCatBars(cont){
+  const months=monthsBack(6);
+  const byMonthCat={}; const catTot={};
+  state.transactions.forEach(t=>{ if(t.type!=='expense'||!t.date) return; const m=monthKey(t.date); if(!months.includes(m)) return; const c=t.category||'Uncategorized'; (byMonthCat[m]=byMonthCat[m]||{})[c]=(byMonthCat[m][c]||0)+t.amount; catTot[c]=(catTot[c]||0)+t.amount; });
+  const cats=Object.entries(catTot).sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
+  if(!cats.length){ cont.innerHTML=`<div class="card pad empty"><h3>Not enough history yet</h3><p class="note">A few months of spending will fill this in.</p></div>`; return; }
+  const top=cats.slice(0,7); const hasOther=cats.length>7;
+  const monthTotals=months.map(m=>Object.values(byMonthCat[m]||{}).reduce((s,v)=>s+v,0));
+  const max=Math.max(1,...monthTotals);
+  const W=Math.max(320,months.length*72), H=230, padT=10,padB=38,padL=10,padR=10;
+  const plotH=H-padT-padB, groupW=(W-padL-padR)/months.length, bw=Math.min(34,groupW-16), baseY=padT+plotH;
+  let g='';
+  months.forEach((m,i)=>{
+    const gx=padL+i*groupW+groupW/2; let y=baseY;
+    const mc=byMonthCat[m]||{};
+    top.forEach(c=>{ const v=mc[c]||0; if(!v) return; const h=v/max*plotH; y-=h;
+      g+=`<rect x="${(gx-bw/2).toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${catColor(c)}"><title>${escapeHtml(c)} · ${MONTHS[+m.slice(5,7)-1]} · ${money(v)}</title></rect>`; });
+    if(hasOther){ const ov=cats.slice(7).reduce((s,c)=>s+(mc[c]||0),0); if(ov){ const h=ov/max*plotH; y-=h; g+=`<rect x="${(gx-bw/2).toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="var(--muted)"><title>Other · ${money(ov)}</title></rect>`; } }
+    g+=`<text x="${gx}" y="${H-22}" text-anchor="middle" font-size="11" fill="var(--muted)" style="font-family:Inter">${MONTHS[+m.slice(5,7)-1]}</text>`;
+    g+=`<text x="${gx}" y="${H-9}" text-anchor="middle" font-size="9" fill="var(--ink)" style="font-family:JetBrains Mono">${shortNum(monthTotals[i])}</text>`;
+  });
+  const legend=top.map(c=>`<span class="chip" style="cursor:default"><span class="dot" style="background:${catColor(c)}"></span>${escapeHtml(c)}</span>`).join('')+(hasOther?`<span class="chip"><span class="dot" style="background:var(--muted)"></span>Other</span>`:'');
+  cont.innerHTML=`<div class="card pad">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${legend}</div>
+    <svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" style="max-width:100%;height:auto">
+      <line x1="${padL}" y1="${baseY}" x2="${W-padR}" y2="${baseY}" stroke="var(--line)"/>${g}</svg>
+    <p class="note" style="margin:8px 0 0">Each bar is one month's spending, stacked by category. Number under each bar is that month's total.</p>
+  </div>`;
+}
+
+/* ---- Daily spending: real monthly calendar ---- */
+function renderCalendar(){
+  const cont=document.getElementById('calendar'); if(!cont) return;
+  if(!calMonth){ const d=new Date(); calMonth=`${d.getFullYear()}-${p2(d.getMonth()+1)}`; }
+  const [yy,mm]=calMonth.split('-').map(Number);
+  document.getElementById('calLabel').textContent=`${MONTHS[mm-1]} ${yy}`;
+  const byDay={}; state.transactions.forEach(t=>{ if(t.type!=='expense'||!t.date) return; if(t.date.slice(0,7)!==calMonth) return; byDay[t.date]=(byDay[t.date]||0)+t.amount; });
+  const daysIn=new Date(yy,mm,0).getDate();
+  const firstDow=new Date(yy,mm-1,1).getDay();
+  const todayIso=(()=>{ const d=new Date(); return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`; })();
+  const vals=Object.values(byDay); const max=Math.max(1,...vals,0.0001);
+  const totalSpent=vals.reduce((s,v)=>s+v,0);
+  const spentDays=vals.filter(v=>v>0).length;
+  const noSpend=daysIn-spentDays;
+  const busiest=vals.length?Math.max(...vals):0;
+  const shade=v=>{ if(!v) return 'var(--sunken)'; const t=Math.min(1,v/max); return `color-mix(in srgb, var(--gold) ${Math.round(16+t*80)}%, var(--card))`; };
+  // build cells with leading blanks; weekly totals
+  const cells=[]; for(let i=0;i<firstDow;i++) cells.push(null);
+  for(let d=1;d<=daysIn;d++) cells.push(d);
+  while(cells.length%7) cells.push(null);
+  const dows=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let html=`<div class="cal-grid">`+dows.map(d=>`<div class="cal-dow">${d}</div>`).join('')+`<div class="cal-dow">Week</div>`;
+  for(let w=0; w<cells.length/7; w++){
+    let wtot=0;
+    for(let i=0;i<7;i++){
+      const day=cells[w*7+i];
+      if(day==null){ html+=`<div class="cal-cell blank"></div>`; continue; }
+      const iso=`${calMonth}-${p2(day)}`; const v=byDay[iso]||0; wtot+=v;
+      html+=`<div class="cal-cell ${v>0?'has':''} ${iso===todayIso?'today':''}" data-iso="${iso}" style="background:${shade(v)}">
+        <span class="d">${day}</span>${v>0?`<span class="amt">${money(v).replace(/\.00$/,'')}</span>`:''}</div>`;
+    }
+    html+=`<div class="cal-wtot">${wtot>0?`<span class="wv">${shortNum(wtot)}</span>`:'<span class="note">–</span>'}</div>`;
+  }
+  html+=`</div>
+    <div class="note" style="margin-top:10px;display:flex;gap:14px;flex-wrap:wrap">
+      <span><strong style="color:var(--ink)">${money(totalSpent)}</strong> spent</span>
+      <span>busiest ${money(busiest)}</span>
+      <span>${noSpend} no-spend day${noSpend===1?'':'s'}</span>
+      <span>avg ${money(totalSpent/daysIn)}/day</span>
+      <span style="margin-left:auto;display:flex;align-items:center;gap:5px">Less <span style="display:inline-flex;gap:3px">${[0,.33,.66,1].map(t=>`<span style="width:13px;height:13px;border-radius:3px;background:${t?`color-mix(in srgb, var(--gold) ${Math.round(16+t*80)}%, var(--card))`:'var(--sunken)'};border:1px solid var(--line)"></span>`).join('')}</span> More</span>
+    </div>`;
+  cont.innerHTML=html;
+  cont.querySelectorAll('.cal-cell.has').forEach(el=>{
+    el.addEventListener('click',()=>openDayDrill(el.dataset.iso));
+    el.addEventListener('mouseenter',e=>showCalTip(el.dataset.iso,e));
+    el.addEventListener('mousemove',positionCalTip);
+    el.addEventListener('mouseleave',hideCalTip);
+  });
+}
+function showCalTip(iso,e){
+  const tip=document.getElementById('calTip');
+  const list=state.transactions.filter(t=>t.date===iso).sort((a,b)=>b.amount-a.amount);
+  if(!list.length){ hideCalTip(); return; }
+  const spent=list.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const cap=12, shown=list.slice(0,cap);
+  tip.innerHTML=`<div class="tt-h"><span>${prettyFullDate(iso)}</span><span class="mono amt out">${money(spent)}</span></div>`+
+    shown.map(t=>{ const inc=t.type==='income', tr=t.type==='transfer';
+      return `<div class="tt-r"><span>${escapeHtml(t.description||'(no description)')}</span><span class="mono ${tr?'':(inc?'amt in':'amt out')}" style="flex:none">${tr?'↔ ':(inc?'+':'−')}${money(t.amount)}</span></div>`; }).join('')+
+    (list.length>cap?`<div class="tt-more">+${list.length-cap} more · click for all</div>`:`<div class="tt-more">Click to open</div>`);
+  tip.classList.add('on');
+  positionCalTip(e);
+}
+function positionCalTip(e){
+  const tip=document.getElementById('calTip'); if(!tip.classList.contains('on')) return;
+  const pad=14, w=tip.offsetWidth||260, h=tip.offsetHeight||120;
+  let x=e.clientX+pad, y=e.clientY+pad;
+  if(x+w>window.innerWidth-8) x=e.clientX-w-pad;
+  if(y+h>window.innerHeight-8) y=e.clientY-h-pad;
+  tip.style.left=Math.max(8,x)+'px'; tip.style.top=Math.max(8,y)+'px';
+}
+function hideCalTip(){ document.getElementById('calTip').classList.remove('on'); }
+function shiftCal(delta){ hideCalTip(); const [y,m]=calMonth.split('-').map(Number); const d=new Date(y,m-1+delta,1); calMonth=`${d.getFullYear()}-${p2(d.getMonth()+1)}`; renderCalendar(); }
 function renderPie(){
   const cont=document.getElementById('pieChart');
-  const set=pieScope==='all'?state.transactions:state.transactions.filter(t=>monthKey(t.date)===nowMonth());
+  const {from,to}=trRangeVal();
+  document.getElementById('pieRangeLbl').textContent='· '+rangeLabel(from,to);
+  const set=(from||to)?state.transactions.filter(t=>inRange(t.date,from,to)):state.transactions;
   const byCat={}; set.filter(t=>t.type==='expense').forEach(t=>byCat[t.category]=(byCat[t.category]||0)+t.amount);
   const entries=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
   const total=entries.reduce((s,e)=>s+e[1],0);
-  if(!entries.length){ cont.innerHTML=`<div class="empty" style="padding:26px"><h3>Nothing spent ${pieScope==='all'?'yet':'this month'}</h3><p class="note">Money-out transactions show up here as a breakdown.</p></div>`; return; }
+  if(!entries.length){ cont.innerHTML=`<div class="empty" style="padding:26px"><h3>Nothing spent in this period</h3><p class="note">Money-out transactions show up here as a breakdown. Try widening the date range.</p></div>`; return; }
   const cx=95,cy=95,r=90,ir=52; let a=-Math.PI/2; const slices=[]; const pieData=[];
-  entries.forEach(([c,v],i)=>{ const frac=v/total, a1=a+frac*2*Math.PI; const x0=cx+r*Math.cos(a),y0=cy+r*Math.sin(a),x1=cx+r*Math.cos(a1),y1=cy+r*Math.sin(a1); const large=(a1-a)>Math.PI?1:0; slices.push(`<path data-i="${i}" style="cursor:pointer;transition:opacity .12s" d="M ${cx} ${cy} L ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z" fill="${catColor(c)}"><title>${escapeHtml(c)} · ${money(v)} · ${(frac*100).toFixed(1)}%</title></path>`); pieData.push({c,v,frac}); a=a1; });
-  const legend=entries.map(([c,v],i)=>`<div class="pieLeg" data-i="${i}" style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;cursor:pointer">
+  entries.forEach(([c,v],i)=>{ const frac=v/total, a1=a+frac*2*Math.PI; const x0=cx+r*Math.cos(a),y0=cy+r*Math.sin(a),x1=cx+r*Math.cos(a1),y1=cy+r*Math.sin(a1); const large=(a1-a)>Math.PI?1:0; slices.push(`<path data-i="${i}" data-cat="${encodeURIComponent(c)}" style="cursor:pointer;transition:opacity .12s" d="M ${cx} ${cy} L ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z" fill="${catColor(c)}"><title>${escapeHtml(c)} · ${money(v)} · ${(frac*100).toFixed(1)}% · click to see transactions</title></path>`); pieData.push({c,v,frac}); a=a1; });
+  const legend=entries.map(([c,v],i)=>`<div class="pieLeg" data-i="${i}" data-cat="${encodeURIComponent(c)}" style="display:flex;align-items:center;gap:8px;padding:5px 6px;font-size:13px;cursor:pointer;border-radius:7px">
      <span class="dot" style="background:${catColor(c)};width:10px;height:10px"></span>
      <span style="flex:1">${escapeHtml(c)}</span>
      <span class="mono" style="font-weight:600">${money(v)}</span>
-     <span class="note mono" style="width:44px;text-align:right">${(v/total*100).toFixed(0)}%</span></div>`).join('');
+     <span class="note mono" style="width:44px;text-align:right">${(v/total*100).toFixed(0)}%</span>
+     <span class="note" style="width:14px;text-align:right">›</span></div>`).join('');
   cont.innerHTML=`<div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">
     <svg id="pieSvg" viewBox="0 0 190 190" width="190" height="190" style="flex:none">
       ${slices.join('')}
       <circle cx="${cx}" cy="${cy}" r="${ir}" fill="var(--card)" pointer-events="none"/>
-      <text id="pieTop" x="${cx}" y="${cy-4}" text-anchor="middle" font-size="11" fill="var(--muted)" style="font-family:Inter" pointer-events="none">${pieScope==='all'?'Total out':'This month'}</text>
+      <text id="pieTop" x="${cx}" y="${cy-4}" text-anchor="middle" font-size="11" fill="var(--muted)" style="font-family:Inter" pointer-events="none">Total out</text>
       <text id="pieVal" x="${cx}" y="${cy+15}" text-anchor="middle" font-size="15" fill="var(--ink)" style="font-family:JetBrains Mono;font-weight:700" pointer-events="none">${money(total)}</text>
     </svg>
     <div style="flex:1;min-width:200px">${legend}</div>
@@ -1020,8 +1395,13 @@ function renderPie(){
   const svg=document.getElementById('pieSvg');
   const top=document.getElementById('pieTop'), val=document.getElementById('pieVal');
   const focus=i=>{ const d=pieData[i]; top.textContent=d.c; val.textContent=`${(d.frac*100).toFixed(1)}%`; svg.querySelectorAll('path[data-i]').forEach(x=>x.style.opacity=(+x.dataset.i===i)?'1':'.3'); };
-  const reset=()=>{ top.textContent=pieScope==='all'?'Total out':'This month'; val.textContent=money(total); svg.querySelectorAll('path[data-i]').forEach(x=>x.style.opacity='1'); };
-  cont.querySelectorAll('path[data-i], .pieLeg').forEach(el=>{ el.addEventListener('mouseenter',()=>focus(+el.dataset.i)); el.addEventListener('mouseleave',reset); });
+  const reset=()=>{ top.textContent='Total out'; val.textContent=money(total); svg.querySelectorAll('path[data-i]').forEach(x=>x.style.opacity='1'); };
+  const drill=el=>{ const cat=decodeURIComponent(el.dataset.cat); openCategoryDrill(cat,from,to); };
+  cont.querySelectorAll('path[data-i], .pieLeg').forEach(el=>{
+    el.addEventListener('mouseenter',()=>focus(+el.dataset.i));
+    el.addEventListener('mouseleave',reset);
+    el.addEventListener('click',()=>drill(el));
+  });
 }
 function renderTrend(){
   const cont=document.getElementById('trendChart');
@@ -1038,11 +1418,12 @@ function renderTrend(){
   data.forEach((d,i)=>{
     const gx=padL+i*groupW+groupW/2;
     const inH=d.in/max*plotH, outH=d.out/max*plotH;
-    g+=`<rect x="${(gx-bw-2).toFixed(1)}" y="${(baseY-inH).toFixed(1)}" width="${bw.toFixed(1)}" height="${inH.toFixed(1)}" rx="3" fill="var(--pos)"><title>${MONTHS[+d.m.slice(5,7)-1]} ${d.m.slice(0,4)} · in ${money(d.in)}</title></rect>`;
-    g+=`<rect x="${(gx+2).toFixed(1)}" y="${(baseY-outH).toFixed(1)}" width="${bw.toFixed(1)}" height="${outH.toFixed(1)}" rx="3" fill="var(--neg)"><title>${MONTHS[+d.m.slice(5,7)-1]} ${d.m.slice(0,4)} · out ${money(d.out)}</title></rect>`;
+    g+=`<rect class="trMonth" data-m="${d.m}" x="${(padL+i*groupW).toFixed(1)}" y="${padT}" width="${groupW.toFixed(1)}" height="${plotH}" fill="transparent" style="cursor:pointer"><title>${MONTHS[+d.m.slice(5,7)-1]} ${d.m.slice(0,4)} - click to focus</title></rect>`;
+    g+=`<rect x="${(gx-bw-2).toFixed(1)}" y="${(baseY-inH).toFixed(1)}" width="${bw.toFixed(1)}" height="${inH.toFixed(1)}" rx="3" fill="var(--pos)" pointer-events="none"/>`;
+    g+=`<rect x="${(gx+2).toFixed(1)}" y="${(baseY-outH).toFixed(1)}" width="${bw.toFixed(1)}" height="${outH.toFixed(1)}" rx="3" fill="var(--neg)" pointer-events="none"/>`;
     const net=d.in-d.out;
-    g+=`<text x="${gx}" y="${H-22}" text-anchor="middle" font-size="11" fill="var(--muted)" style="font-family:Inter">${MONTHS[+d.m.slice(5,7)-1]}</text>`;
-    g+=`<text x="${gx}" y="${H-9}" text-anchor="middle" font-size="9" fill="${net>=0?'var(--pos)':'var(--neg)'}" style="font-family:JetBrains Mono">${net>=0?'+':'−'}${shortNum(Math.abs(net))}</text>`;
+    g+=`<text x="${gx}" y="${H-22}" text-anchor="middle" font-size="11" fill="var(--muted)" style="font-family:Inter" pointer-events="none">${MONTHS[+d.m.slice(5,7)-1]}</text>`;
+    g+=`<text x="${gx}" y="${H-9}" text-anchor="middle" font-size="9" fill="${net>=0?'var(--pos)':'var(--neg)'}" style="font-family:JetBrains Mono" pointer-events="none">${net>=0?'+':'−'}${shortNum(Math.abs(net))}</text>`;
   });
   cont.innerHTML=`
     <div style="display:flex;gap:14px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
@@ -1054,24 +1435,67 @@ function renderTrend(){
       <line x1="${padL}" y1="${baseY}" x2="${W-padR}" y2="${baseY}" stroke="var(--line)"/>
       ${g}
     </svg>`;
+  cont.querySelectorAll('.trMonth').forEach(el=>el.addEventListener('click',()=>{
+    const m=el.dataset.m; const [yy,mm]=m.split('-').map(Number);
+    document.getElementById('trRange').value='custom';
+    document.getElementById('trFromWrap').style.display='flex'; document.getElementById('trToWrap').style.display='flex';
+    document.getElementById('trFrom').value=`${m}-01`;
+    document.getElementById('trTo').value=`${yy}-${p2(mm)}-${p2(new Date(yy,mm,0).getDate())}`;
+    renderPie();
+  }));
 }
 function shortNum(n){
   if(state.settings.currency==='INR'){ if(n>=1e7)return (n/1e7).toFixed(1)+'Cr'; if(n>=1e5)return (n/1e5).toFixed(1)+'L'; }
   else { if(n>=1e9)return (n/1e9).toFixed(1)+'B'; if(n>=1e6)return (n/1e6).toFixed(1)+'M'; }
   if(n>=1e3)return (n/1e3).toFixed(1)+'k'; return Math.round(n).toString(); }
 
+/* ---- shared date-range helpers ---- */
+function presetRange(key){
+  const now=new Date(); const y=now.getFullYear(), m=now.getMonth();
+  const iso=d=>`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
+  const first=(yy,mm)=>iso(new Date(yy,mm,1)), last=(yy,mm)=>iso(new Date(yy,mm+1,0));
+  switch(key){
+    case 'this-month': return {from:first(y,m),to:last(y,m)};
+    case 'last-month': return {from:first(y,m-1),to:last(y,m-1)};
+    case 'last-3': return {from:first(y,m-2),to:last(y,m)};
+    case 'last-6': return {from:first(y,m-5),to:last(y,m)};
+    case 'this-year': return {from:`${y}-01-01`,to:`${y}-12-31`};
+    case 'all': default: return {from:'',to:''};
+  }
+}
+const inRange=(date,from,to)=>(!from||date>=from)&&(!to||date<=to);
+function rangeLabel(from,to){
+  if(!from&&!to) return 'All time';
+  const f=from?prettyDate(from):'start', t=to?prettyDate(to):'now';
+  return `${f} - ${t}`;
+}
 /* TRANSACTIONS */
 function filteredTx(){
-  const q=(document.getElementById('txSearch').value||'').toLowerCase();
+  let q=(document.getElementById('txSearch').value||'').toLowerCase();
   const cf=document.getElementById('txCatFilter').value;
-  const mf=document.getElementById('txMonthFilter').value;
+  const from=document.getElementById('txFrom').value, to=document.getElementById('txTo').value;
   const af=document.getElementById('txAcctFilter').value;
+  const noTr=document.getElementById('txNoTransfers').checked;
+  // amount operators in the search box: >100  <50  >=20  <=9.99
+  const amtOps=[]; q=q.replace(/([<>]=?)\s*(\d+(?:\.\d+)?)/g,(_,op,n)=>{ amtOps.push([op,parseFloat(n)]); return ' '; }).trim();
   let list=state.transactions.slice();
+  if(noTr) list=list.filter(t=>t.type!=='transfer');
   if(q) list=list.filter(t=>(t.description||'').toLowerCase().includes(q));
   if(cf) list=list.filter(t=>t.category===cf);
-  if(mf) list=list.filter(t=>monthKey(t.date)===mf);
+  if(from||to) list=list.filter(t=>inRange(t.date,from,to));
   if(af) list=list.filter(t=>t.type==='transfer' ? (t.from===af||t.to===af) : t.account===af);
+  amtOps.forEach(([op,n])=>{ list=list.filter(t=>{ const a=t.amount; return op==='>'?a>n:op==='<'?a<n:op==='>='?a>=n:op==='<='?a<=n:true; }); });
   return list;
+}
+function txToCSV(list){
+  const esc=s=>{ s=String(s==null?'':s); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };
+  const rows=[['Date','Description','Category','Account','Type','Amount']];
+  list.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(t=>{
+    const acctLabel=t.type==='transfer'?`${acctName(t.from)} -> ${acctName(t.to)}`:acctName(t.account);
+    const signed=t.type==='income'?t.amount:t.type==='expense'?-t.amount:t.amount;
+    rows.push([t.date||'',t.description||'',t.type==='transfer'?'Transfer':(t.category||''),acctLabel,t.type,signed.toFixed(2)]);
+  });
+  return rows.map(r=>r.map(esc).join(',')).join('\n');
 }
 function transferLabel(t){ if(isReceivable(t.to)) return 'Lent'; if(isReceivable(t.from)) return 'Repaid'; return 'Transfer'; }
 function transferCtx(t){
@@ -1084,9 +1508,9 @@ function renderTotals(list){
   const inS=list.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const outS=list.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
   const trN=list.filter(t=>t.type==='transfer').length;
-  const mf=document.getElementById('txMonthFilter').value;
+  const from=document.getElementById('txFrom').value, to=document.getElementById('txTo').value;
   const af=document.getElementById('txAcctFilter').value;
-  const label=mf?prettyMonth(mf):'All months';
+  const label=rangeLabel(from,to);
   document.getElementById('txTotals').innerHTML=`
     ${af?`<div class="totpill" style="background:var(--sunken)"><div class="l">${escapeHtml(acctName(af))} · balance</div><div class="v mono amt ${accountBalance(af)>=0?'in':'out'}">${money(accountBalance(af))}</div></div>`:''}
     <div class="totpill"><div class="l">${label} · in</div><div class="v mono amt in">${money(inS)}</div></div>
@@ -1340,7 +1764,9 @@ document.getElementById('resetDefaultsBtn').addEventListener('click',()=>{
 });
 document.getElementById('settingsBack').addEventListener('click',()=>showView('overview'));
 document.getElementById('viewTrendsBtn').addEventListener('click',()=>showView('trends'));
-document.getElementById('trendsBack').addEventListener('click',()=>showView('overview'));
+document.getElementById('catView').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return; catView=b.dataset.cv; renderCatTrends(); });
+document.getElementById('calPrev').addEventListener('click',()=>shiftCal(-1));
+document.getElementById('calNext').addEventListener('click',()=>shiftCal(1));
 document.getElementById('txSub').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return; const sub=b.dataset.sub; document.querySelectorAll('#txSub button').forEach(x=>x.classList.toggle('on',x===b)); document.getElementById('txRecordsPane').style.display=sub==='records'?'block':'none'; document.getElementById('txImportPane').style.display=sub==='import'?'block':'none'; document.getElementById('addTxBtn').style.display=sub==='import'?'none':''; });
 function showImportSub(){ document.querySelectorAll('#txSub button').forEach(x=>x.classList.toggle('on',x.dataset.sub==='import')); document.getElementById('txRecordsPane').style.display='none'; document.getElementById('txImportPane').style.display='block'; document.getElementById('addTxBtn').style.display='none'; }
 function showRecordsSub(){ document.querySelectorAll('#txSub button').forEach(x=>x.classList.toggle('on',x.dataset.sub==='records')); document.getElementById('txRecordsPane').style.display='block'; document.getElementById('txImportPane').style.display='none'; document.getElementById('addTxBtn').style.display=''; }
@@ -1391,11 +1817,20 @@ document.getElementById('bgSuggest').addEventListener('click',async ()=>{
   await saveKey('budget',state.budget); renderBudget();
   toast(n?`Filled ${n} budget${n>1?'s':''} from your ${avg.months}-month average`:'Nothing to suggest yet');
 });
-document.getElementById('ovMonth').addEventListener('input',()=>{ ovAll=false; updateOvAll(); renderOverview(); });
-document.getElementById('ovAll').addEventListener('click',()=>{ ovAll=!ovAll; updateOvAll(); renderOverview(); });
+document.getElementById('ovMonth').addEventListener('input',()=>{ document.getElementById('ovRange').value='month'; updateOvAll(); renderOverview(); });
+document.getElementById('ovRange').addEventListener('change',()=>{ const sel=document.getElementById('ovRange').value; if(sel!=='month'&&sel!=='custom'){ const r=presetRange(sel); document.getElementById('ovFrom').value=r.from; document.getElementById('ovTo').value=r.to; } updateOvAll(); renderOverview(); });
+['ovFrom','ovTo'].forEach(id=>document.getElementById(id).addEventListener('input',renderOverview));
 document.getElementById('ovPrev').addEventListener('click',()=>shiftOvMonth(-1));
 document.getElementById('ovNext').addEventListener('click',()=>shiftOvMonth(1));
-document.getElementById('pieScope').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return; pieScope=b.dataset.scope; document.querySelectorAll('#pieScope button').forEach(x=>x.classList.toggle('on',x===b)); renderPie(); });
+function applyTrRange(){
+  const sel=document.getElementById('trRange').value, custom=sel==='custom';
+  document.getElementById('trFromWrap').style.display=custom?'flex':'none';
+  document.getElementById('trToWrap').style.display=custom?'flex':'none';
+  if(!custom){ const r=presetRange(sel); document.getElementById('trFrom').value=r.from; document.getElementById('trTo').value=r.to; }
+  renderPie();
+}
+document.getElementById('trRange').addEventListener('change',applyTrRange);
+['trFrom','trTo'].forEach(id=>document.getElementById(id).addEventListener('input',renderPie));
 document.querySelectorAll('[data-tpl]').forEach(b=>b.addEventListener('click',()=>openTemplateModal(b.dataset.tpl)));
 function templateCsv(kind){
   return kind==='dc'
@@ -1431,9 +1866,43 @@ function openTemplateModal(kind){
 }
 
 /* tx filters + view toggle */
-['txSearch','txCatFilter','txMonthFilter','txAcctFilter'].forEach(id=>document.getElementById(id).addEventListener('input',renderTx));
-function viewAccountTx(id){ showView('transactions'); showRecordsSub(); document.getElementById('txAcctFilter').value=id; document.getElementById('txSearch').value=''; document.getElementById('txCatFilter').value=''; renderTx(); }
-document.getElementById('txMonthClear').addEventListener('click',()=>{ document.getElementById('txMonthFilter').value=''; renderTx(); });
+['txSearch','txCatFilter','txAcctFilter','txFrom','txTo'].forEach(id=>document.getElementById(id).addEventListener('input',renderTx));
+document.getElementById('txNoTransfers').addEventListener('change',renderTx);
+document.getElementById('txNeedsReview').addEventListener('click',()=>{ document.getElementById('txCatFilter').value='Uncategorized'; document.getElementById('txSearch').value=''; renderTx(); });
+document.getElementById('txExport').addEventListener('click',()=>{ const list=filteredTx(); if(!list.length){toast('Nothing to export');return;} robustDownload('ledger-transactions.csv',txToCSV(list)); });
+/* keyboard shortcuts */
+document.addEventListener('keydown',e=>{
+  const typing=/^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName||'')) || e.target.isContentEditable;
+  const modalOpen=document.getElementById('modalBg').classList.contains('on');
+  const drillOpen=document.getElementById('drillPanel').classList.contains('on');
+  if(e.key==='Escape'&&drillOpen){ closeDrill(); return; }
+  if(e.key==='Escape'&&modalOpen){ closeModal(); return; }
+  if(typing||modalOpen||drillOpen||e.metaKey||e.ctrlKey||e.altKey) return;
+  if(e.key==='n'||e.key==='N'){ e.preventDefault(); openTxModal(); }
+  else if(e.key==='/'){ e.preventDefault(); showView('transactions'); showRecordsSub(); const s=document.getElementById('txSearch'); if(s){ s.focus(); s.select&&s.select(); } }
+  else if(e.key==='g'){ /* prefix for go-to: next key */ window._goto=true; setTimeout(()=>window._goto=false,900); }
+  else if(window._goto){ const map={o:'overview',t:'transactions',a:'accounts',b:'budget',d:'debt',r:'trends'}; if(map[e.key]){ e.preventDefault(); if(e.key==='r'){ showView('trends'); } else showView(map[e.key]); } window._goto=false; }
+});
+function applyTxRange(){
+  const sel=document.getElementById('txRange').value;
+  const custom=sel==='custom';
+  document.getElementById('txFromWrap').style.display=custom?'flex':'none';
+  document.getElementById('txToWrap').style.display=custom?'flex':'none';
+  if(!custom){ const r=presetRange(sel); document.getElementById('txFrom').value=r.from; document.getElementById('txTo').value=r.to; }
+  renderTx();
+}
+document.getElementById('txRange').addEventListener('change',applyTxRange);
+function viewAccountTx(id){ showView('transactions'); showRecordsSub(); document.getElementById('txAcctFilter').value=id; document.getElementById('txSearch').value=''; document.getElementById('txCatFilter').value=''; document.getElementById('txRange').value='all'; applyTxRange(); }
+function viewCategoryTx(cat,from,to){
+  showView('transactions'); showRecordsSub();
+  document.getElementById('txAcctFilter').value=''; document.getElementById('txSearch').value='';
+  document.getElementById('txCatFilter').value=cat;
+  document.getElementById('txRange').value='custom';
+  document.getElementById('txFromWrap').style.display='flex'; document.getElementById('txToWrap').style.display='flex';
+  document.getElementById('txFrom').value=from||''; document.getElementById('txTo').value=to||'';
+  document.getElementById('viewSeg').querySelector('[data-vm="flat"]').click();
+  renderTx();
+}
 document.getElementById('viewSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return; viewMode=b.dataset.vm; document.querySelectorAll('#viewSeg button').forEach(x=>x.classList.toggle('on',x===b)); renderTx(); });
 
 /* grouped interactions (delegated) */
@@ -2089,5 +2558,5 @@ document.getElementById('debtList').addEventListener('click',async e=>{
 });
 
 /* boot */
-(async function(){ await loadAll(); applyTheme(state.settings.theme); applyFont(state.settings.font); document.getElementById('boot').style.display='none'; document.getElementById('v-overview').classList.add('on'); updateCur(); document.getElementById('ovMonth').value=nowMonth(); updateOvAll(); document.getElementById('txMonthFilter').value=''; renderAll(); })();
+(async function(){ await loadAll(); applyTheme(state.settings.theme); applyFont(state.settings.font); document.getElementById('boot').style.display='none'; document.getElementById('v-overview').classList.add('on'); updateCur(); document.getElementById('ovMonth').value=nowMonth(); document.getElementById('ovRange').value='month'; updateOvAll(); document.getElementById('txRange').value='all'; document.getElementById('trRange').value='this-month'; { const r=presetRange('this-month'); document.getElementById('trFrom').value=r.from; document.getElementById('trTo').value=r.to; } renderAll(); })();
 </script>
